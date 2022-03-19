@@ -1,6 +1,4 @@
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Scanner;
 import java.util.concurrent.CyclicBarrier;
 
@@ -19,11 +17,11 @@ public class Main {
 			archivo = sc.nextInt();
 		}
         CyclicBarrier barrera = new CyclicBarrier(clientes);
-		new Servidor(barrera, archivo).start();
+		new Servidor(barrera, archivo, clientes).start();
 		
 		for(int j=0; j<clientes ; j++)
 		{
-			Thread.sleep(100);
+			Thread.sleep(200);
 			new Cliente(j, archivo);
 		}
 		sc.close();
