@@ -3,7 +3,6 @@ package Servidor;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,54 +10,72 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.concurrent.CyclicBarrier;
 
 public class Servidor extends Thread{
-	private static final String LOGPATH = "Logs\\" ;
+	//Conection
 	private static final int PUERTO = 3400; //Puerto
 	private static CyclicBarrier barrera;
-	private static int archivo;
-	private static int totalClientes = 0;
+	private static final String LOGPATH = "Logs\\";
+	//Client
+	private static int totalClients = 0;
 	private static int clientCounter = 1;
+	//file
+	private int tipoArchivo;
+	private String filename;
+	private String hash;
+	private File file;
+	private long fileSize;
+
 	
-	public Servidor(CyclicBarrier br, int archivo, int totalClientes) {
+	public Servidor(CyclicBarrier br, int tipoArchivo, int totalClients) {
 		barrera = br;
-		Servidor.archivo = archivo;
-		Servidor.totalClientes = totalClientes;
+		Servidor.totalClients = totalClients;
+		this.tipoArchivo = tipoArchivo;
 	}
 	public void run() {
         ServerSocket ss;
-		//LOGS
+		//LOGS DATE
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
 		Date date = new Date();  
 		String strdate = String.valueOf(formatter.format(date));  
 		File logFile = new File(LOGPATH+strdate+"log.txt");
 		try {
+			//File
+			file = new File(tipoArchivo ==100? "assets\\Servidor\\f1":"assets\\Servidor\\f2");
+			this.fileSize = file.length();
+			this.filename = file.getName();
+			MessageDigest ms =MessageDigest.getInstance("SHA-256");
+			hash = Servidor.checksum(ms,file);
+
+			//LOGS
 			FileOutputStream output = new FileOutputStream(logFile);
-			String name = archivo == 100? "f1":"f2";
-			String message = "Name File:"+name+" Size:"+String.valueOf(archivo)+"MB";
+			String message = "Name File:"+this.filename+" Size:"+String.valueOf(tipoArchivo)+"MB";
 			output.write(message.getBytes(), 0, message.length());
 			output.close();
+
+		} catch (IOException | NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		
+		try {
+			ss = new ServerSocket(PUERTO);
+			while(clientCounter <= 50){
+				Socket s = ss.accept();
+				//Threads
+				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
+				Multi t=new Multi(s, barrera, this.file, this.fileSize, this.hash, clientCounter, totalClients, logFile);
+				t.start();
+				clientCounter++;
+			}
+			ss.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		while(true){
-			try {
-				ss = new ServerSocket(PUERTO);
-		        Socket s=ss.accept();
-				//Threads
-				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
-		        Multi t=new Multi(s, barrera, archivo, clientCounter, totalClientes, logFile);
-		        t.start();
-		        ss.close();
-		        clientCounter++;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-	 }
 	}
 	public static void writeLog(String message,File file) throws IOException{
 		if (file.exists()){
@@ -124,77 +141,76 @@ public class Servidor extends Thread{
 }
 
 class Multi extends Thread{
+	//threads
 	private static CyclicBarrier barrera;
-	private static int archivo;
+	//Streams
+	private Socket s;
 	OutputStream output;
 	InputStream inputHash;
-	private int clientCounter;
-	private int totalClientes;
+	//Files
+	private File file = null;
+	private long fileSize = 0;
+	private String fileHash;
 	private File logFile;
-	private Socket s;
+	//Clients
+	private int clientCounter;
+	private int totalClients;
 
 
-	public Multi(Socket s, CyclicBarrier br, int archivo, int clientCounter, int totalClientes, File logFile) throws IOException{
+	public Multi(Socket s, CyclicBarrier br, File file, long fileSize,String fileHash, int clientCounter, int totalClients, File logFile) throws IOException{
 		this.s =s;
 	    Multi.barrera = br;
-	    Multi.archivo = archivo;
 	    output = s.getOutputStream();
 	    inputHash = s.getInputStream();
+	    this.file = file;
+	    this.fileSize = fileSize;
+	    this.fileHash = fileHash;
 	    this.clientCounter = clientCounter;
-	    this.totalClientes = totalClientes;
+	    this.totalClients = totalClients;
 	    this.logFile = logFile;
 	}
 	
 	public void run(){
 		try {
 			FileInputStream input = null;
-			File file = null;
-			long FileSize = 0;
-			String hash = null;
-			MessageDigest ms =MessageDigest.getInstance("SHA-256");
-				try {
-					if(archivo == 100)
-					{
-						file = new File("assets\\Servidor\\Prueba.txt");
-						FileSize = file.length();
-						hash = Servidor.checksum(ms,file);
-						input = new FileInputStream(file);
-					}
-					else {
-						file = new File("assets\\Servidor\\f2");
-						FileSize = file.length();
-						hash = Servidor.checksum(ms,file);
-						input = new FileInputStream(file);
-					}
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-		    System.out.println("Se esperan a los usuarios\t Usuario:" + clientCounter+"\tEsperando: "+barrera.getNumberWaiting()+"/"+totalClientes);
+			input = new FileInputStream(this.file);
+
+		    System.out.println("Se esperan a los usuarios\t Usuario:" + clientCounter+"\tEsperando: "+barrera.getNumberWaiting()+"/"+totalClients);
+			
 			barrera.await();//se cuelga si llegan en desorden
 		    System.out.println("Se procede a enviar los archivos");
 		    long time1 = System.currentTimeMillis();
-			// Sends total amount of clients
-			DataOutputStream intagerSend = new DataOutputStream(s.getOutputStream());
-			intagerSend.writeInt(totalClientes);
-			// Sends the id of the client
-			intagerSend.writeInt(clientCounter);
-			intagerSend.writeLong(FileSize);
+
+			//Metadata
+				// Sends total amount of clients
+				DataOutputStream intagerSend = new DataOutputStream(s.getOutputStream());
+				intagerSend.writeInt(totalClients);
+				// Sends the id of the client
+				intagerSend.writeInt(clientCounter);
+				// Sends the size of the file
+				intagerSend.writeLong(this.fileSize);
+
 			writeFile(input, 50, output);
 			input.close();
+
 		    long time2 = System.currentTimeMillis();
-			byte bhash[] = new byte[hash.length()];
-			inputHash.read(bhash, 0, hash.length());
-			String clientHash = new String(bhash);
-			System.out.println(clientHash+ " [HAPPY]");
-			boolean GoodRead = clientHash.equals(hash) ? true : false;
-			barrera.await();
 		    long total = time2-time1;
+
+			//getHash from CLient
+			byte bhash[] = new byte[this.fileHash.length()];
+			inputHash.read(bhash, 0, this.fileHash.length());
+			String clientHash = new String(bhash);
+			// System.out.println("[Client"+clientCounter+"Hash]"clientHash);
+			boolean GoodRead = clientHash.equals(this.fileHash) ? true : false;
+
+			barrera.await();
 			synchronized(this.logFile){
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
-				Servidor.writeLog("Cliente:"+clientCounter+"\tVerificacion:"+GoodRead+"\tServer:"+hash+"\tCient:"+clientHash+"\tTiempo:"+String.valueOf(total), this.logFile);
+				Servidor.writeLog("Cliente:"+clientCounter+"\tVerificacion:"+GoodRead+"\tServer:"+this.fileHash+"\tCient:"+clientHash+"\tTiempo:"+String.valueOf(total), this.logFile);
 			}
 
 		} catch (Exception e) {
+			//
 		}
 	}
 

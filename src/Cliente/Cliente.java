@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 
 
 public class Cliente extends Thread{
+	private static final int CHUNKSIZE = 50;
 	private static final String PATH = "assets\\Cliente\\" ;
 	private static final int PUERTO = 3400; //Puerto del servidor
 	private static final String SERVIDOR = "192.168.0.11";
@@ -32,22 +33,13 @@ public class Cliente extends Thread{
 		Socket socket = null;
 		InputStream lector = null;
 		OutputStream escritor = null;
-		try {
-			
-			try {
-				while(socket == null)
-				{
-					socket = new Socket(SERVIDOR, PUERTO);
-				}
-				lector = socket.getInputStream();
-				escritor = socket.getOutputStream();
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
+		try {	
+			socket = new Socket(SERVIDOR, PUERTO);
+			lector = socket.getInputStream();
+			escritor = socket.getOutputStream();
 
-	        while(lector.available() == 0) {
-	        }
+	        while(lector.available() == 0){}
+
 			DataInputStream intagerRecive = new DataInputStream(socket.getInputStream());
 			// Recive the total of the client
 			this.total = intagerRecive.readInt();
@@ -56,21 +48,21 @@ public class Cliente extends Thread{
 			// Recive the total size of the file
 			this.fileSize = intagerRecive.readLong();
 
+			//Reads file 
 			File file = new File(PATH+"Cliente"+id+"-Prueba"+total+".bin");
 			output = new FileOutputStream(file);
-
-			//until file ends reading i
-			readFile(50, lector, output, fileSize);
-			//Thread.sleep(200);
+			readFile(CHUNKSIZE, lector, output, fileSize);
+				//Thread.sleep(200);
 			output.close();
+			//Hashing to server
 			MessageDigest ms =MessageDigest.getInstance("SHA-256");
 			String hash = checksum(ms,file);
 			byte bhash[] = hash.getBytes();
 			escritor.write(bhash, 0, hash.length());
+			//close Streams
 			escritor.close();
 			lector.close();
 			socket.close();
-			// System.out.println(Cliente.checksum(MessageDigest.getInstance("SHA-265"), file));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

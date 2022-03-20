@@ -21,7 +21,7 @@ public class Main {
 		
 		for(int j=0; j<clientes ; j++)
 		{
-			Thread.sleep(200);
+			// Thread.sleep(200);
 			new Cliente(j);
 		}
 		sc.close();
@@ -29,6 +29,3 @@ public class Main {
 }
 
 
-// For creating dumb files of a an specific size in Windows
-// fsutil file createnew <file> <size in bytes> 
-// fsutil file createnew <file> <size in bytes> 
