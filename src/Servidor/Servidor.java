@@ -148,7 +148,6 @@ class Multi extends Thread{
 	OutputStream output;
 	InputStream inputHash;
 	//Files
-	private static final String LOGPATH = "Logs/Servidor/";
 	private File file = null;
 	private long fileSize = 0;
 	private String fileHash;
