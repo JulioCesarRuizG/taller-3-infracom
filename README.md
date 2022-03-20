@@ -1,10 +1,12 @@
 # TCP Java Multithread Server
-## Prerequisitos
-### Crear Archivos
-Para la ejecucion del codigo es necesario tener los archivos de parte del servidor que se desean enviar.
-Los archivos se guardan en una carpeta `assets`
+## Prerrequisitos
+Clonar el repositorio en la máquina donde se ejecutará el cliente (Windows) y donde se ejecutará el servidor (Linux).
 
-Se buca tener dos archivos uno de 100MB y otro de 250MB (Aunque el servidor funciona con cualquier tamaño de no mas 500MB)
+### Crear Archivos
+Para la ejecucion del coóigo es necesario tener los archivos de parte del servidor que se desean enviar.
+Los archivos se guardan en una carpeta 'Servidor' dentro de una carpeta 'assets' en la raíz del proyecto.
+
+Dentro de assets/Servidor se busca tener dos archivos uno de 100MiB (llamado f1) y otro de 250MiB (llamado f2). Aunque el servidor funciona con cualquier tamaño de no más 500MiB.
 
 Las instrucciones para crear archivos dummmy son las siguientes
 #### Windows
@@ -14,14 +16,14 @@ Las instrucciones para crear archivos dummmy son las siguientes
   
    `fsutil file createnew f1 104857600`
 #### Linux
-  `dd if=/dev/zero of=<file> bs=1MB count=<size in MB>`
+  `dd if=/dev/zero of=<file> bs=1MiB count=<size in MiB>`
 ##### Ejemplo:
-  Un Archivo de 100MB con combre f1.bin
+  Un Archivo de 100MiB con combre f1.bin
   
-   `dd if=/dev/zero of=f1.bin bs=1MB count=100`
+   `dd if=/dev/zero of=f1.bin bs=1MiB count=100`
 
 ### Definir direccion ip
-  Para la direccion ip es necesario conocer la direccion del servidor que envia los archivos.
+  Para la direccion ip es necesario conocer la direccion del servidor que envía los archivos.
   Esta direccion debe colocarse del lado del cliente 
   ```
   //Cliente
@@ -32,9 +34,22 @@ Las instrucciones para crear archivos dummmy son las siguientes
   `ipconfig`
 #### Linux
   `ifconfig`
-## Ejecucion
+  
+## Ejecución
 ### Servidor y Cliente
-  El programa se debe compilar en diferentes equipos uno con la funcion de servidor y otro con la funcion de cliente
-#### Cliente
-
+  El programa se debe compilar en diferentes equipos uno con la función de servidor y otro con la función de cliente
+  
 #### Servidor
+En la raíz del proyecto ejecutar el siguiente comando para compilarlo:
+sudo javac -cp src src/Main.java
+En la raíz del proyecto ejecutar el siguiente comando para ejecutarlo:
+sudo java -cp src src/Main.java
+
+1. Ingresar el tipo de servicio (servidor)
+2. Ingresar la cantidad de clientes (misma cantidad indicada en el cliente)
+3. Ingresar el tamaño del archivo (100 o 250)
+
+#### Cliente
+1. Ingresar el tipo de servicio (cliente)
+2. Ingresar la cantidad de clientes
+
