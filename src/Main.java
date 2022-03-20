@@ -22,7 +22,7 @@ public class Main {
 		for(int j=0; j<clientes ; j++)
 		{
 			Thread.sleep(200);
-			new Cliente(j, archivo);
+			new Cliente(j);
 		}
 		sc.close();
 	}

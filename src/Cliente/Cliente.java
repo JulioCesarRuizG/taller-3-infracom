@@ -1,16 +1,12 @@
 package Cliente;
 
-import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.Socket;
 import java.security.MessageDigest;
 
@@ -21,14 +17,13 @@ public class Cliente extends Thread{
 	private static final String SERVIDOR = "192.168.0.11";
 	private int id;
 	private int total;
-	private int archivo;
+	private long fileSize;
 	private FileOutputStream output;
 	
 	
-	public Cliente(int pid, int cantidad)
+	public Cliente(int pid)
 	{
 		id=pid;
-		archivo = cantidad;
 		this.start();
 	}
 	
@@ -52,27 +47,27 @@ public class Cliente extends Thread{
 			}
 
 	        while(lector.available() == 0) {
-	        	
 	        }
-
 			DataInputStream intagerRecive = new DataInputStream(socket.getInputStream());
 			// Recive the total of the client
 			this.total = intagerRecive.readInt();
 			// Recive the id of the client
 			this.id = intagerRecive.readInt();
+			// Recive the total size of the file
+			this.fileSize = intagerRecive.readLong();
 
 			File file = new File(PATH+"Cliente"+id+"-Prueba"+total+".bin");
 			output = new FileOutputStream(file);
-			byte[] chuncks = new byte[50*1024*1024];//50MB
-			int nbytes;
-			//total amount of mb based on files
-			nbytes = archivo* 1024 * 1024;			
-	        int count, totalCount =0;
+
 			//until file ends reading i
-	        while ((count = lector.read(chuncks)) > 0 && (totalCount += count) <= nbytes) {
-				output.write(chuncks, 0, count);
-	        }
+			readFile(50, lector, output, fileSize);
+			//Thread.sleep(200);
 			output.close();
+			MessageDigest ms =MessageDigest.getInstance("SHA-256");
+			String hash = checksum(ms,file);
+			byte bhash[] = hash.getBytes();
+			escritor.write(bhash, 0, hash.length());
+			escritor.close();
 			lector.close();
 			socket.close();
 			// System.out.println(Cliente.checksum(MessageDigest.getInstance("SHA-265"), file));
@@ -80,7 +75,19 @@ public class Cliente extends Thread{
 			e.printStackTrace();
 		}
 	}
-	private static String checksum(MessageDigest digest,File file)throws IOException 
+	synchronized public void readFile(int chunkSize, InputStream lector, OutputStream output,long fileSize )throws Exception{
+		byte[] chunks = new byte[chunkSize*1024*1024];//50MB
+		int count = 0;
+		long total = 0;
+		while (total < fileSize) {
+			count = lector.read(chunks);
+			output.write(chunks, 0, count);
+			total += count;
+		}
+		// System.out.println("[Client] FILE END");
+	}
+
+	synchronized private static String checksum(MessageDigest digest,File file)throws IOException 
     {
         // Get file input stream for reading the file
         // content
@@ -125,6 +132,5 @@ public class Cliente extends Thread{
         // finally we return the complete hash
         return sb.toString();
     }
-
 
 }

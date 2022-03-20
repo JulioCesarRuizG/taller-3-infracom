@@ -1,28 +1,20 @@
 package Servidor;
 
-import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
 import java.security.MessageDigest;
-import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
-import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Servidor extends Thread{
 	private static final String LOGPATH = "Logs\\" ;
@@ -44,17 +36,14 @@ public class Servidor extends Thread{
 		Date date = new Date();  
 		String strdate = String.valueOf(formatter.format(date));  
 		File logFile = new File(LOGPATH+strdate+"log.txt");
-		AtomicInteger atom = new AtomicInteger(0);
-		synchronized(atom){
-			try {
-				FileOutputStream output = new FileOutputStream(logFile);
-				String name = archivo == 100? "f1":"f2";
-				String message = "Name File:"+name+"Size:"+String.valueOf(archivo);
-				output.write(message.getBytes(), 0, message.length());
-				output.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		try {
+			FileOutputStream output = new FileOutputStream(logFile);
+			String name = archivo == 100? "f1":"f2";
+			String message = "Name File:"+name+" Size:"+String.valueOf(archivo)+"MB";
+			output.write(message.getBytes(), 0, message.length());
+			output.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		while(true){
 			try {
@@ -71,13 +60,14 @@ public class Servidor extends Thread{
 			}
 	 }
 	}
-	public static void writeFile(String message,File file) throws IOException{
+	public static void writeLog(String message,File file) throws IOException{
 		if (file.exists()){
 			Scanner myReader = new Scanner(file);
 			String data = "";
 			while (myReader.hasNextLine()) {
-			  data += myReader.nextLine();
+			  data = data+myReader.nextLine()+"\n";
 			}
+			myReader.close();
 			FileOutputStream output = new FileOutputStream(file);
 			output.write((data+message).getBytes(), 0,message.length()+data.length());
 			output.close();
@@ -137,6 +127,7 @@ class Multi extends Thread{
 	private static CyclicBarrier barrera;
 	private static int archivo;
 	OutputStream output;
+	InputStream inputHash;
 	private int clientCounter;
 	private int totalClientes;
 	private File logFile;
@@ -148,6 +139,7 @@ class Multi extends Thread{
 	    Multi.barrera = br;
 	    Multi.archivo = archivo;
 	    output = s.getOutputStream();
+	    inputHash = s.getInputStream();
 	    this.clientCounter = clientCounter;
 	    this.totalClientes = totalClientes;
 	    this.logFile = logFile;
@@ -155,26 +147,24 @@ class Multi extends Thread{
 	
 	public void run(){
 		try {
-
 			FileInputStream input = null;
-			int nbytes = 0;
-			byte[] bytes = new byte[10*1024*1024];//10mMB to avoid OutOfMemoryError
 			File file = null;
+			long FileSize = 0;
 			String hash = null;
 			MessageDigest ms =MessageDigest.getInstance("SHA-256");
 				try {
 					if(archivo == 100)
 					{
-						file = new File("assets\\Servidor\\f1");
+						file = new File("assets\\Servidor\\Prueba.txt");
+						FileSize = file.length();
 						hash = Servidor.checksum(ms,file);
 						input = new FileInputStream(file);
-						nbytes = 100 * 1024 * 1024;
 					}
 					else {
 						file = new File("assets\\Servidor\\f2");
+						FileSize = file.length();
 						hash = Servidor.checksum(ms,file);
 						input = new FileInputStream(file);
-						nbytes = 250 * 1024 * 1024;
 					}
 				} catch (FileNotFoundException e) {
 					e.printStackTrace();
@@ -188,24 +178,34 @@ class Multi extends Thread{
 			intagerSend.writeInt(totalClientes);
 			// Sends the id of the client
 			intagerSend.writeInt(clientCounter);
-			int count;
-			int totalCount = 0;
-			while ((count = input.read(bytes)) > 0 && (totalCount += count) <= nbytes) {
-				output.write(bytes, 0, count);
-			}
-		    long time2 = System.currentTimeMillis();
-
+			intagerSend.writeLong(FileSize);
+			writeFile(input, 50, output);
 			input.close();
+		    long time2 = System.currentTimeMillis();
+			byte bhash[] = new byte[hash.length()];
+			inputHash.read(bhash, 0, hash.length());
+			String clientHash = new String(bhash);
+			System.out.println(clientHash+ " [HAPPY]");
+			boolean GoodRead = clientHash.equals(hash) ? true : false;
 			barrera.await();
 		    long total = time2-time1;
-			Servidor.writeFile("\nCliente:"+clientCounter+" Verificacion:"+hash+"Tiempo:"+String.valueOf(total), this.logFile);
-			AtomicInteger atom = new AtomicInteger(1);
-			synchronized(atom){
-				System.out.println("Se enviaron los archivos en tiempo: " + total + " Usuario " + clientCounter);
+			synchronized(this.logFile){
+				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
+				Servidor.writeLog("Cliente:"+clientCounter+"\tVerificacion:"+GoodRead+"\tServer:"+hash+"\tCient:"+clientHash+"\tTiempo:"+String.valueOf(total), this.logFile);
 			}
 
 		} catch (Exception e) {
 		}
 	}
+
+	synchronized public void writeFile(FileInputStream input, int chunkSize, OutputStream output) throws IOException{
+		byte[] bytes = new byte[chunkSize*1024*1024];//NMB to avoid OutOfMemoryError
+		int count;
+		while ((count = input.read(bytes)) > 0) {
+			output.write(bytes, 0, count);
+		}
+		// System.out.println("[Server] FILE END");
+	}
+
 } 
 
