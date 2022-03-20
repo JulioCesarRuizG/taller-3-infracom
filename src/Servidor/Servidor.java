@@ -20,13 +20,13 @@ public class Servidor extends Thread{
 	//Conection
 	private static final int PUERTO = 3400; //Puerto
 	private static CyclicBarrier barrera;
-	private static final String LOGPATH = "Logs\\";
+	private static final String LOGPATH = "Logs/Servidor/";
 	//Client
 	private static int totalClients = 0;
 	private static int clientCounter = 1;
 	//file
 	private int tipoArchivo;
-	private String filename;
+	private String fileName;
 	private String hash;
 	private File file;
 	private long fileSize;
@@ -46,15 +46,15 @@ public class Servidor extends Thread{
 		File logFile = new File(LOGPATH+strdate+"log.txt");
 		try {
 			//File
-			file = new File(tipoArchivo ==100? "assets\\Servidor\\f1":"assets\\Servidor\\f2");
+			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
 			this.fileSize = file.length();
-			this.filename = file.getName();
+			this.fileName = file.getName();
 			MessageDigest ms =MessageDigest.getInstance("SHA-256");
 			hash = Servidor.checksum(ms,file);
 
 			//LOGS
 			FileOutputStream output = new FileOutputStream(logFile);
-			String message = "Name File:"+this.filename+" Size:"+String.valueOf(tipoArchivo)+"MB";
+			String message = "Name File:"+this.fileName+" Size:"+String.valueOf(tipoArchivo)+"MB";
 			output.write(message.getBytes(), 0, message.length());
 			output.close();
 
@@ -68,8 +68,8 @@ public class Servidor extends Thread{
 				Socket s = ss.accept();
 				//Threads
 				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
-				Multi t=new Multi(s, barrera, this.file, this.fileSize, this.hash, clientCounter, totalClients, logFile);
-				t.start();
+				Multi thread=new Multi(s, barrera, this.file, this.fileSize, this.hash,this.fileName, clientCounter, totalClients, logFile);
+				thread.start();
 				clientCounter++;
 			}
 			ss.close();
@@ -148,16 +148,18 @@ class Multi extends Thread{
 	OutputStream output;
 	InputStream inputHash;
 	//Files
+	private static final String LOGPATH = "Logs/Servidor/";
 	private File file = null;
 	private long fileSize = 0;
 	private String fileHash;
+	private String fileName;
 	private File logFile;
 	//Clients
 	private int clientCounter;
 	private int totalClients;
 
 
-	public Multi(Socket s, CyclicBarrier br, File file, long fileSize,String fileHash, int clientCounter, int totalClients, File logFile) throws IOException{
+	public Multi(Socket s, CyclicBarrier br, File file, long fileSize,String fileHash,String fileName, int clientCounter, int totalClients, File logFile) throws IOException{
 		this.s =s;
 	    Multi.barrera = br;
 	    output = s.getOutputStream();
@@ -165,6 +167,7 @@ class Multi extends Thread{
 	    this.file = file;
 	    this.fileSize = fileSize;
 	    this.fileHash = fileHash;
+	    this.fileName = fileName;
 	    this.clientCounter = clientCounter;
 	    this.totalClients = totalClients;
 	    this.logFile = logFile;
@@ -182,14 +185,18 @@ class Multi extends Thread{
 		    long time1 = System.currentTimeMillis();
 
 			//Metadata
-				// Sends total amount of clients
 				DataOutputStream intagerSend = new DataOutputStream(s.getOutputStream());
+				// Sends total amount of clients
 				intagerSend.writeInt(totalClients);
 				// Sends the id of the client
 				intagerSend.writeInt(clientCounter);
 				// Sends the size of the file
 				intagerSend.writeLong(this.fileSize);
-
+				// Sends the file hash
+				intagerSend.writeUTF(this.fileHash);
+				// Sends the file name
+				intagerSend.writeUTF(this.fileName);
+			
 			writeFile(input, 50, output);
 			input.close();
 
@@ -200,10 +207,12 @@ class Multi extends Thread{
 			byte bhash[] = new byte[this.fileHash.length()];
 			inputHash.read(bhash, 0, this.fileHash.length());
 			String clientHash = new String(bhash);
-			// System.out.println("[Client"+clientCounter+"Hash]"clientHash);
+			System.out.println("[Client"+clientCounter+"Hash]"+clientHash);
 			boolean GoodRead = clientHash.equals(this.fileHash) ? true : false;
 
 			barrera.await();
+			System.out.println("[CONTROL]");
+
 			synchronized(this.logFile){
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
 				Servidor.writeLog("Cliente:"+clientCounter+"\tVerificacion:"+GoodRead+"\tServer:"+this.fileHash+"\tCient:"+clientHash+"\tTiempo:"+String.valueOf(total), this.logFile);

@@ -9,17 +9,28 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Scanner;
 
 
 public class Cliente extends Thread{
-	private static final int CHUNKSIZE = 50;
-	private static final String PATH = "assets\\Cliente\\" ;
+	private int id;
+	//Server
 	private static final int PUERTO = 3400; //Puerto del servidor
 	private static final String SERVIDOR = "192.168.0.11";
-	private int id;
+	private static final int CHUNKSIZE = 50;
+	//file and log paths
+	private static final String PATH = "assets/Cliente/" ;
+	private static final String LOGPATH = "Logs/Cliente/";
+	//file
 	private int total;
 	private long fileSize;
+	private String fileName;
+	//Streams and hash
 	private FileOutputStream output;
+	private String hash = "";
+
 	
 	
 	public Cliente(int pid)
@@ -33,13 +44,23 @@ public class Cliente extends Thread{
 		Socket socket = null;
 		InputStream lector = null;
 		OutputStream escritor = null;
+		String serverHash = "";
+		boolean FileCorrect = false;
+
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
+		Date date = new Date();  
+		String strdate = String.valueOf(formatter.format(date)); 
+		File logFile = new File(LOGPATH+"Cliente"+this.id+"-"+strdate+"log.txt");
+
 		try {	
 			socket = new Socket(SERVIDOR, PUERTO);
 			lector = socket.getInputStream();
 			escritor = socket.getOutputStream();
-
+			
 	        while(lector.available() == 0){}
-
+			
+		    long time1 = System.currentTimeMillis();
+			//Metadata
 			DataInputStream intagerRecive = new DataInputStream(socket.getInputStream());
 			// Recive the total of the client
 			this.total = intagerRecive.readInt();
@@ -47,18 +68,31 @@ public class Cliente extends Thread{
 			this.id = intagerRecive.readInt();
 			// Recive the total size of the file
 			this.fileSize = intagerRecive.readLong();
-
+			// Recive the hash of the file
+			serverHash = intagerRecive.readUTF();
+			// Recive the name of the file
+			this.fileName = intagerRecive.readUTF();
+			
+			int sizeMB = (int)fileSize/(1024*1024);
+			writeLog("Name File:"+this.fileName+" Size:"+String.valueOf(sizeMB)+"MB", logFile);
 			//Reads file 
 			File file = new File(PATH+"Cliente"+id+"-Prueba"+total+".bin");
 			output = new FileOutputStream(file);
 			readFile(CHUNKSIZE, lector, output, fileSize);
 				//Thread.sleep(200);
 			output.close();
+
 			//Hashing to server
 			MessageDigest ms =MessageDigest.getInstance("SHA-256");
-			String hash = checksum(ms,file);
-			byte bhash[] = hash.getBytes();
-			escritor.write(bhash, 0, hash.length());
+			this.hash = checksum(ms,file);
+			byte bhash[] = this.hash.getBytes();
+			escritor.write(bhash, 0, this.hash.length());
+			
+		    long time2 = System.currentTimeMillis();
+		    long totalTime = time2-time1;
+
+			FileCorrect = this.hash.equals(serverHash) ? true : false;
+			writeLog("Cliente:"+this.id+"\tVerificacion:"+FileCorrect+"\tServer:"+serverHash+"\tCient:"+this.hash+"\tTiempo:"+String.valueOf(totalTime), logFile);
 			//close Streams
 			escritor.close();
 			lector.close();
@@ -67,6 +101,24 @@ public class Cliente extends Thread{
 			e.printStackTrace();
 		}
 	}
+	public static void writeLog(String message,File file) throws IOException{
+		if (file.exists()){
+			Scanner myReader = new Scanner(file);
+			String data = "";
+			while (myReader.hasNextLine()) {
+			  data = data+myReader.nextLine()+"\n";
+			}
+			myReader.close();
+			FileOutputStream output = new FileOutputStream(file);
+			output.write((data+message).getBytes(), 0,message.length()+data.length());
+			output.close();
+		}else{
+			FileOutputStream output = new FileOutputStream(file);
+			output.write(message.getBytes(), 0, message.length());
+			output.close();
+		}
+	}
+
 	synchronized public void readFile(int chunkSize, InputStream lector, OutputStream output,long fileSize )throws Exception{
 		byte[] chunks = new byte[chunkSize*1024*1024];//50MB
 		int count = 0;
