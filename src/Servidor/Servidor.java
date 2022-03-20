@@ -188,7 +188,7 @@ class Multi extends Thread{
 				// Sends total amount of clients
 				intagerSend.writeInt(totalClients);
 				// Sends the id of the client
-				intagerSend.writeInt(clientCounter);
+				intagerSend.writeInt(clientCounter+1);
 				// Sends the size of the file
 				intagerSend.writeLong(this.fileSize);
 				// Sends the file hash
