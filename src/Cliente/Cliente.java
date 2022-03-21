@@ -18,7 +18,7 @@ public class Cliente extends Thread{
 	private int id;
 	//Server
 	private static final int PUERTO = 3400; //Puerto del servidor
-	private static final String SERVIDOR = "192.168.0.11";
+	private static final String SERVIDOR = "192.168.1.111";
 	private static final int CHUNKSIZE = 50;
 	//file and log paths
 	private static final String PATH = "assets/Cliente/" ;
