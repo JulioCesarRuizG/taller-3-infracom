@@ -1,3 +1,4 @@
 f*
 *.bin
 *.txt
+/bin/

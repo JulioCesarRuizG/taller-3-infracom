@@ -18,7 +18,7 @@ public class Cliente extends Thread{
 	private int id;
 	//Server
 	private static final int PUERTO = 3400; //Puerto del servidor
-	private static final String SERVIDOR = "192.168.1.111";
+	private static final String SERVIDOR = "157.253.217.216";
 	private static final int CHUNKSIZE = 50;
 	//file and log paths
 	private static final String PATH = "assets/Cliente/" ;
@@ -47,10 +47,7 @@ public class Cliente extends Thread{
 		String serverHash = "";
 		boolean FileCorrect = false;
 
-		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
-		Date date = new Date();  
-		String strdate = String.valueOf(formatter.format(date)); 
-		File logFile = new File(LOGPATH+"Cliente"+this.id+"-"+strdate+"log.txt");
+		File logFile = new File(LOGPATH+"Cliente"+this.id+"-"+getDate()+"log.txt");
 
 		try {	
 			socket = new Socket(SERVIDOR, PUERTO);
@@ -101,6 +98,13 @@ public class Cliente extends Thread{
 			e.printStackTrace();
 		}
 	}
+	public static String getDate(){
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
+		Date date = new Date();  
+		String strdate = String.valueOf(formatter.format(date)); 
+		return strdate; 
+	}
+
 	public static void writeLog(String message,File file) throws IOException{
 		if (file.exists()){
 			Scanner myReader = new Scanner(file);
@@ -119,12 +123,14 @@ public class Cliente extends Thread{
 		}
 	}
 
-	synchronized public void readFile(int chunkSize, InputStream lector, OutputStream output,long fileSize )throws Exception{
+	public void readFile(int chunkSize, InputStream lector, OutputStream output,long fileSize )throws Exception{
 		byte[] chunks = new byte[chunkSize*1024*1024];//50MB
 		int count = 0;
 		long total = 0;
 		while (total < fileSize) {
-			count = lector.read(chunks);
+			synchronized(lector){
+				count = lector.read(chunks);
+			}
 			output.write(chunks, 0, count);
 			total += count;
 		}

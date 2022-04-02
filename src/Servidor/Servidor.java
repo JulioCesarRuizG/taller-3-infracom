@@ -40,23 +40,21 @@ public class Servidor extends Thread{
 	public void run() {
         ServerSocket ss;
 		//LOGS DATE
-		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
-		Date date = new Date();  
-		String strdate = String.valueOf(formatter.format(date));  
-		File logFile = new File(LOGPATH+strdate+"log.txt");
+		File logFile = new File(LOGPATH+getDate()+"log.txt");
 		try {
-			//File
+			//File and Hash
 			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
 			this.fileSize = file.length();
 			this.fileName = file.getName();
+
 			MessageDigest ms =MessageDigest.getInstance("SHA-256");
 			hash = Servidor.checksum(ms,file);
 
 			//LOGS
-			FileOutputStream output = new FileOutputStream(logFile);
+			FileOutputStream logOutput = new FileOutputStream(logFile);
 			String message = "Name File:"+this.fileName+" Size:"+String.valueOf(tipoArchivo)+"MB";
-			output.write(message.getBytes(), 0, message.length());
-			output.close();
+			logOutput.write(message.getBytes(), 0, message.length());
+			logOutput.close();
 
 		} catch (IOException | NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -64,7 +62,9 @@ public class Servidor extends Thread{
 		
 		try {
 			ss = new ServerSocket(PUERTO);
-			while(clientCounter <= 50){
+			//defined by the serverSocket
+			int MAXCLIENTS = 50;
+			while(clientCounter <= MAXCLIENTS){
 				Socket s = ss.accept();
 				//Threads
 				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
@@ -77,6 +77,7 @@ public class Servidor extends Thread{
 			e.printStackTrace();
 		}
 	}
+	// Appends information to file
 	public static void writeLog(String message,File file) throws IOException{
 		if (file.exists()){
 			Scanner myReader = new Scanner(file);
@@ -93,6 +94,12 @@ public class Servidor extends Thread{
 			output.write(message.getBytes(), 0, message.length());
 			output.close();
 		}
+	}
+	public static String getDate(){
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");  
+		Date date = new Date();  
+		String strdate = String.valueOf(formatter.format(date)); 
+		return strdate; 
 	}
 	public static String checksum(MessageDigest digest,File file) throws IOException{
 		// Get file input stream for reading the file
@@ -156,6 +163,7 @@ class Multi extends Thread{
 	//Clients
 	private int clientCounter;
 	private int totalClients;
+	private static final int CHUNKSIZE = 50;
 
 
 	public Multi(Socket s, CyclicBarrier br, File file, long fileSize,String fileHash,String fileName, int clientCounter, int totalClients, File logFile) throws IOException{
@@ -196,7 +204,9 @@ class Multi extends Thread{
 				// Sends the file name
 				intagerSend.writeUTF(this.fileName);
 			
-			writeFile(input, 50, output);
+
+			
+			writeFile(input, CHUNKSIZE, output);
 			input.close();
 
 		    long time2 = System.currentTimeMillis();
@@ -210,7 +220,7 @@ class Multi extends Thread{
 			boolean GoodRead = clientHash.equals(this.fileHash) ? true : false;
 
 			barrera.await();
-			System.out.println("[CONTROL]");
+			// System.out.println("[CONTROL]");
 
 			synchronized(this.logFile){
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
@@ -222,11 +232,13 @@ class Multi extends Thread{
 		}
 	}
 
-	synchronized public void writeFile(FileInputStream input, int chunkSize, OutputStream output) throws IOException{
+	public void writeFile(FileInputStream input, int chunkSize, OutputStream output) throws IOException{
 		byte[] bytes = new byte[chunkSize*1024*1024];//NMB to avoid OutOfMemoryError
 		int count;
 		while ((count = input.read(bytes)) > 0) {
-			output.write(bytes, 0, count);
+			synchronized(output){
+				output.write(bytes, 0, count);
+			}
 		}
 		// System.out.println("[Server] FILE END");
 	}
