@@ -7,6 +7,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
@@ -15,6 +18,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.concurrent.CyclicBarrier;
+
+import Servidor.Servidor.ClientSocket;
 
 public class Servidor extends Thread{
 	//Conection
@@ -31,14 +36,23 @@ public class Servidor extends Thread{
 	private File file;
 	private long fileSize;
 
-	
+	class ClientSocket{
+		InetAddress address;
+		int port;
+		
+		public ClientSocket (DatagramPacket request) {
+			this.address = request.getAddress();
+			this.port = request.getPort();
+		}
+		
+	}
 	public Servidor(CyclicBarrier br, int tipoArchivo, int totalClients) {
 		barrera = br;
 		Servidor.totalClients = totalClients;
 		this.tipoArchivo = tipoArchivo;
 	}
 	public void run() {
-        ServerSocket ss;
+		DatagramSocket ds;
 		//LOGS DATE
 		File logFile = new File(LOGPATH+getDate()+"log.txt");
 		try {
@@ -61,14 +75,15 @@ public class Servidor extends Thread{
 		}
 		
 		try {
-			ss = new ServerSocket(PUERTO);
-			//defined by the serverSocket
-			int MAXCLIENTS = 50;
-			while(clientCounter <= MAXCLIENTS){
-				Socket s = ss.accept();
+			ds = new DatagramSocket(PUERTO);
+			boolean listening = true;
+			while(listening){
+				DatagramPacket request = new DatagramPacket (new byte [1], 1);
+				ds.receive(request);
+				ClientSocket cs = new ClientSocket(request);
 				//Threads
 				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
-				Multi thread=new Multi(s, barrera, this.file, this.fileSize, this.hash,this.fileName, clientCounter, totalClients, logFile);
+				Multi thread=new Multi(cs, barrera, this.file, this.fileSize, this.hash,this.fileName, clientCounter, totalClients, logFile);
 				thread.start();
 				clientCounter++;
 			}
@@ -151,7 +166,7 @@ class Multi extends Thread{
 	//threads
 	private static CyclicBarrier barrera;
 	//Streams
-	private Socket s;
+	private ClientSocket cs;
 	OutputStream output;
 	InputStream inputHash;
 	//Files
@@ -166,11 +181,10 @@ class Multi extends Thread{
 	private static final int CHUNKSIZE = 50;
 
 
-	public Multi(Socket s, CyclicBarrier br, File file, long fileSize,String fileHash,String fileName, int clientCounter, int totalClients, File logFile) throws IOException{
-		this.s =s;
+	public Multi(ClientSocket cs, CyclicBarrier br, File file, long fileSize,String fileHash,String fileName, int clientCounter, int totalClients, File logFile) throws IOException{
+		this.cs =cs;
 	    Multi.barrera = br;
 	    output = s.getOutputStream();
-	    inputHash = s.getInputStream();
 	    this.file = file;
 	    this.fileSize = fileSize;
 	    this.fileHash = fileHash;
@@ -212,19 +226,13 @@ class Multi extends Thread{
 		    long time2 = System.currentTimeMillis();
 		    long total = time2-time1;
 
-			//getHash from CLient
-			byte bhash[] = new byte[this.fileHash.length()];
-			inputHash.read(bhash, 0, this.fileHash.length());
-			String clientHash = new String(bhash);
-			System.out.println("[Client"+clientCounter+"Hash]"+clientHash);
-			boolean GoodRead = clientHash.equals(this.fileHash) ? true : false;
 
 			barrera.await();
 			// System.out.println("[CONTROL]");
 
 			synchronized(this.logFile){
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
-				Servidor.writeLog("Cliente:"+clientCounter+"\tVerificacion:"+GoodRead+"\tServer:"+this.fileHash+"\tCient:"+clientHash+"\tTiempo:"+String.valueOf(total), this.logFile);
+				Servidor.writeLog("Cliente:"+clientCounter+"\tServer:"+this.fileHash+"\tTiempo:"+String.valueOf(total), this.logFile);
 			}
 
 		} catch (Exception e) {
