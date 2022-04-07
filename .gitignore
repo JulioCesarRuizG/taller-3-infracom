@@ -2,3 +2,5 @@ f*
 *.bin
 *.txt
 /bin/
+# .project
+.class
