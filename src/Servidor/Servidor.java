@@ -18,7 +18,7 @@ import Servidor.Servidor.ClientSocket;
 public class Servidor extends Thread{
 	//Conection
 	private static final int PUERTO = 3400; //Puerto
-	private static final String LOGPATH = "Logs/Servidor/";
+	private static final String LOGPATH = "../Logs/Servidor/";
 	//Client
 	private static int totalClients = 0;
 	private static int clientCounter = 1;
@@ -45,7 +45,6 @@ public class Servidor extends Thread{
 	public void run() {
 		//LOGS DATE
 		File logFile = new File(LOGPATH+getDate()+"log.txt");
-		System.out.println(logFile.getAbsolutePath());
 		try {
 			//File and Hash
 			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
@@ -69,10 +68,8 @@ public class Servidor extends Thread{
 			while(listening){
 				DatagramPacket request = new DatagramPacket (new byte [1], 1);
 				ds.receive(request);
-				System.out.println("pasa2");
 				ClientSocket cs = new ClientSocket(request);
 				//Threads
-				System.out.println("pasa2");
 				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
 				Multi thread=new Multi(cs, ds, this.file, this.fileSize,this.fileName, clientCounter, totalClients, logFile);
 				thread.start();
@@ -90,7 +87,6 @@ public class Servidor extends Thread{
 			while (myReader.hasNextLine()) {
 			  data = data+myReader.nextLine()+"\n";
 			}
-			System.out.println("pasa3");
 			myReader.close();
 			FileOutputStream output = new FileOutputStream(file);
 			output.write((data+message).getBytes(), 0,message.length()+data.length());
@@ -172,7 +168,6 @@ class Multi extends Thread{
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
 				Servidor.writeLog("Cliente:"+clientCounter+"\tTiempo:"+String.valueOf(total), this.logFile);
 			}
-			//barrera
 		} catch (Exception e) {
 			//
 		}
@@ -181,7 +176,6 @@ class Multi extends Thread{
 	synchronized public void writeFile(FileInputStream input, int chunkSize, DatagramSocket ds, ClientSocket cs) throws IOException{
 		byte[] bytes = new byte[1024];//NKB to avoid OutOfMemoryError
 		
-		System.out.println("pasa4");
 		while (input.read(bytes) > 0) {
 			DatagramPacket response = new DatagramPacket(bytes, bytes.length, cs.address, cs.port);
 			ds.send(response);
