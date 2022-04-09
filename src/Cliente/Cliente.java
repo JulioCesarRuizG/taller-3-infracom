@@ -43,9 +43,10 @@ public class Cliente extends Thread{
 		
 		try {
 			DatagramSocket socket = new DatagramSocket();
-			
-			DatagramPacket request = new DatagramPacket(new byte[1], 1, InetAddress.getByName(SERVIDOR), PUERTO);
+			socket.connect(InetAddress.getByName(SERVIDOR), PUERTO);
+			DatagramPacket request = new DatagramPacket(new byte[1], 1);
 			socket.send(request);
+			System.out.println("El estado del cliente es: " + socket.isConnected());
 
 			// Thread.sleep(300);
 			
@@ -119,8 +120,8 @@ public class Cliente extends Thread{
 		// byte[] chunks = new byte[chunkSize*1024*1024];//50MB
 		byte[] chunks = new byte[chunkSize*1024];
 		int count = 0;
-		// t1 =
-		//socket.setSoTimeout(100);
+		// t1
+		//socket.setSoTimeout(1000);
 		boolean ending = false;
 		byte[] END = "END".getBytes();
 		try{
