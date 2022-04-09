@@ -26,7 +26,7 @@ public class Main {
 		}else{
 			for(int j=0; j<clientes ; j++)
 			{
-				Thread.sleep(200);
+				// Thread.sleep(200);
 				new Cliente(j);
 			}
 		}
