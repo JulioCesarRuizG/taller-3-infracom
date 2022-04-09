@@ -18,7 +18,7 @@ public class Cliente extends Thread{
 	private int id;
 	//Server
 	private static final int PUERTO = 3400; //Puerto del servidor
-	private static final String SERVIDOR = "192.168.223.1";
+	private static final String SERVIDOR = "10.138.21.104";
 	private static final int CHUNKSIZE = 64;
 	//file and log paths
 	private static final String PATH = "assets/Cliente/" ;
@@ -47,7 +47,7 @@ public class Cliente extends Thread{
 			DatagramPacket request = new DatagramPacket(new byte[1], 1, InetAddress.getByName(SERVIDOR), PUERTO);
 			socket.send(request);
 
-
+			// Thread.sleep(300);
 			
 	        // while(lector.available() == 0){}
 			
@@ -117,20 +117,20 @@ public class Cliente extends Thread{
 
 	public void readFile(int chunkSize, DatagramSocket socket, OutputStream output,long fileSize )throws Exception{
 		// byte[] chunks = new byte[chunkSize*1024*1024];//50MB
-
 		byte[] chunks = new byte[chunkSize*1024];
-		
 		int count = 0;
-		long total = 0;
-		while (total < fileSize) {
+		// t1 =
+		// socket.setSoTimeout(100);
+		boolean ending = false;
+		byte[] END = "END".getBytes();
+		while (!ending) {
 			DatagramPacket response = new DatagramPacket(chunks, chunks.length);
-				System.out.println("[PRE-CLIENT]");
-				socket.receive(response);
-				String aux = new String(chunks, 0, chunks.length);
-				System.out.println("[CLIENT]"+aux);
+			socket.receive(response);
+			if (chunks.equals(END)){ending = true;}
 			count = response.getLength();
 			output.write(chunks, 0, count);
-			total += count;
 		}
+		System.out.println("[Cliente"+this.id+"]+ FILE END");
+
 	}
 }

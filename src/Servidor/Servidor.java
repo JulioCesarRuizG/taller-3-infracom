@@ -43,12 +43,11 @@ public class Servidor extends Thread{
 		this.tipoArchivo = tipoArchivo;
 	}
 	public void run() {
-		DatagramSocket ds;
 		//LOGS DATE
 		File logFile = new File(LOGPATH+getDate()+"log.txt");
 		try {
 			//File and Hash
-			file = new File(tipoArchivo ==100? "assets/Servidor/Prueba.txt":"assets/Servidor/f2");
+			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
 			this.fileSize = file.length();
 			this.fileName = file.getName();
 
@@ -64,7 +63,7 @@ public class Servidor extends Thread{
 		}
 		
 		try {
-			ds = new DatagramSocket(PUERTO);
+			DatagramSocket ds = new DatagramSocket(PUERTO);
 			boolean listening = true;
 			while(listening){
 				DatagramPacket request = new DatagramPacket (new byte [1], 1);
@@ -76,7 +75,6 @@ public class Servidor extends Thread{
 				thread.start();
 				clientCounter++;
 			}
-			ds.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -162,28 +160,31 @@ class Multi extends Thread{
 
 			writeFile(input, CHUNKSIZE, this.ds, this.cs);
 			input.close();
-			ds.close();
+			// ds.close();
 		    long time2 = System.currentTimeMillis();
 		    long total = time2-time1;
-
+			
 			synchronized(this.logFile){
 				System.out.println("Se enviaron los archivos a"+ " Usuario " + clientCounter+ " Tiempo: " + total );
 				Servidor.writeLog("Cliente:"+clientCounter+"\tTiempo:"+String.valueOf(total), this.logFile);
 			}
-
+			//barrera
 		} catch (Exception e) {
 			//
 		}
 	}
 
 	synchronized public void writeFile(FileInputStream input, int chunkSize, DatagramSocket ds, ClientSocket cs) throws IOException{
-		byte[] bytes = new byte[chunkSize*1024];//NKB to avoid OutOfMemoryError
+		byte[] bytes = new byte[1024];//NKB to avoid OutOfMemoryError
 		while (input.read(bytes) > 0) {
 			DatagramPacket response = new DatagramPacket(bytes, bytes.length, cs.address, cs.port);
-			String aux = new String(bytes, 0, bytes.length);
-			System.out.println("[SERVER]"+aux);
-			// ds.send(response);
+			ds.send(response);
+			// String aux = new String(bytes, 0, bytes.length);
+			// System.out.println("[SERVER]"+aux);
 		}
+		byte[] END = "END".getBytes();
+		DatagramPacket endPacket = new DatagramPacket(END, END.length, cs.address, cs.port);
+		ds.send(endPacket);
 		System.out.println("[Server] FILE END");
 	}
 
