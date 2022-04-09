@@ -18,7 +18,7 @@ public class Cliente extends Thread{
 	private int id;
 	//Server
 	private static final int PUERTO = 3400; //Puerto del servidor
-	private static final String SERVIDOR = "10.138.21.104";
+	private static final String SERVIDOR = "192.168.0.5";
 	private static final int CHUNKSIZE = 64;
 	//file and log paths
 	private static final String PATH = "assets/Cliente/" ;
@@ -120,17 +120,21 @@ public class Cliente extends Thread{
 		byte[] chunks = new byte[chunkSize*1024];
 		int count = 0;
 		// t1 =
-		// socket.setSoTimeout(100);
+		//socket.setSoTimeout(100);
 		boolean ending = false;
 		byte[] END = "END".getBytes();
-		while (!ending) {
+		try{
+			while (!ending) {
 			DatagramPacket response = new DatagramPacket(chunks, chunks.length);
 			socket.receive(response);
-			if (chunks.equals(END)){ending = true;}
+			if( response.getLength() == 3 || chunks.equals(END)){ending = true;}
 			count = response.getLength();
 			output.write(chunks, 0, count);
+			}
+			System.out.println("[Cliente"+this.id+"] FILE END");
 		}
-		System.out.println("[Cliente"+this.id+"]+ FILE END");
+		catch(Exception e){
+		}
 
 	}
 }

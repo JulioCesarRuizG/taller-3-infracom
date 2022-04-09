@@ -45,13 +45,14 @@ public class Servidor extends Thread{
 	public void run() {
 		//LOGS DATE
 		File logFile = new File(LOGPATH+getDate()+"log.txt");
+		// System.out.println(logFile.getAbsolutePath());
 		try {
 			//File and Hash
 			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
 			this.fileSize = file.length();
 			this.fileName = file.getName();
 
-
+			//prueba
 			//LOGS
 			FileOutputStream logOutput = new FileOutputStream(logFile);
 			String message = "Name File:"+this.fileName+" Size:"+String.valueOf(tipoArchivo)+"MB";
@@ -61,21 +62,31 @@ public class Servidor extends Thread{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+		Multi threads[] = new Multi[totalClients];
 		try {
 			DatagramSocket ds = new DatagramSocket(PUERTO);
 			boolean listening = true;
 			while(listening){
 				DatagramPacket request = new DatagramPacket (new byte [1], 1);
 				ds.receive(request);
+				System.out.println("pasa1");
 				ClientSocket cs = new ClientSocket(request);
 				//Threads
+				System.out.println("pasa2");
 				System.out.println("Se recibe una conexion de cliente (numero "+clientCounter+")");
 				Multi thread=new Multi(cs, ds, this.file, this.fileSize,this.fileName, clientCounter, totalClients, logFile);
+				threads[clientCounter-1] = thread;
 				thread.start();
+				if(clientCounter == totalClients){
+					listening = false;
+				}
 				clientCounter++;
 			}
-		} catch (IOException e) {
+			for (Multi thread : threads) {
+				thread.join();
+			}
+
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -87,6 +98,7 @@ public class Servidor extends Thread{
 			while (myReader.hasNextLine()) {
 			  data = data+myReader.nextLine()+"\n";
 			}
+			System.out.println("pasa3");
 			myReader.close();
 			FileOutputStream output = new FileOutputStream(file);
 			output.write((data+message).getBytes(), 0,message.length()+data.length());
@@ -176,6 +188,8 @@ class Multi extends Thread{
 
 	synchronized public void writeFile(FileInputStream input, int chunkSize, DatagramSocket ds, ClientSocket cs) throws IOException{
 		byte[] bytes = new byte[1024];//NKB to avoid OutOfMemoryError
+		
+		System.out.println("pasa4");
 		while (input.read(bytes) > 0) {
 			DatagramPacket response = new DatagramPacket(bytes, bytes.length, cs.address, cs.port);
 			ds.send(response);
