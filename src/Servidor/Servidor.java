@@ -18,7 +18,7 @@ import Servidor.Servidor.ClientSocket;
 public class Servidor extends Thread{
 	//Conection
 	private static final int PUERTO = 3400; //Puerto
-	private static final String LOGPATH = "../Logs/Servidor/";
+	private static final String LOGPATH = "Logs/Servidor/";
 	//Client
 	private static int totalClients = 0;
 	private static int clientCounter = 1;
@@ -45,6 +45,7 @@ public class Servidor extends Thread{
 	public void run() {
 		//LOGS DATE
 		File logFile = new File(LOGPATH+getDate()+"log.txt");
+		System.out.println(logFile.getAbsolutePath());
 		try {
 			//File and Hash
 			file = new File(tipoArchivo ==100? "assets/Servidor/f1":"assets/Servidor/f2");
