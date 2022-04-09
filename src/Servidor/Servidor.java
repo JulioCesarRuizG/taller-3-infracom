@@ -51,7 +51,7 @@ public class Servidor extends Thread{
 			this.fileSize = file.length();
 			this.fileName = file.getName();
 
-
+			//prueba
 			//LOGS
 			FileOutputStream logOutput = new FileOutputStream(logFile);
 			String message = "Name File:"+this.fileName+" Size:"+String.valueOf(tipoArchivo)+"MB";
